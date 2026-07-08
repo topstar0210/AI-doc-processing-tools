@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const extractedText = await extractTextFromPdf(buffer);
+    const { text: extractedText, method: extractionMethod } = await extractTextFromPdf(buffer);
     const structuredData = await extractStructuredData(extractedText);
     const id = await savePdf(buffer, file.name);
 
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       extractedText,
       structuredData,
       createdAt: new Date().toISOString(),
+      extractionMethod,
     };
 
     await saveResult(result);

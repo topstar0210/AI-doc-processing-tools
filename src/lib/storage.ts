@@ -1,7 +1,7 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-import type { ExtractedDocument } from "./types";
+import type { ExtractedDocument, HistorySummary } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
@@ -35,4 +35,38 @@ export async function getResult(id: string): Promise<ExtractedDocument | null> {
   } catch {
     return null;
   }
+}
+
+function toHistorySummary(result: ExtractedDocument): HistorySummary {
+  const documentType = result.structuredData.document_type;
+  return {
+    id: result.id,
+    filename: result.filename,
+    createdAt: result.createdAt,
+    extractionMethod: result.extractionMethod,
+    documentType: typeof documentType === "string" ? documentType : null,
+  };
+}
+
+export async function listResults(): Promise<HistorySummary[]> {
+  await ensureDirs();
+
+  const files = await readdir(RESULTS_DIR);
+  const jsonFiles = files.filter((file) => file.endsWith(".json"));
+
+  const results = await Promise.all(
+    jsonFiles.map(async (file) => {
+      try {
+        const content = await readFile(path.join(RESULTS_DIR, file), "utf-8");
+        return JSON.parse(content) as ExtractedDocument;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return results
+    .filter((result): result is ExtractedDocument => result !== null)
+    .map(toHistorySummary)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }

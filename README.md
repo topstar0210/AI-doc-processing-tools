@@ -5,10 +5,11 @@ Upload text-based PDFs, extract content, and parse structured fields with OpenAI
 ## Features
 
 - Static login (hardcoded credentials)
-- PDF upload (text-based PDFs, up to 10 MB)
-- Text extraction via `pdf-parse`
+- PDF upload (text-based or scanned, up to 10 MB)
+- Text extraction via `pdf-parse`, with OCR fallback via Tesseract.js
 - AI field extraction via OpenAI (`gpt-4o-mini`)
 - Results page with JSON and CSV export
+- Upload history page with past extractions
 
 ## Setup
 
@@ -43,7 +44,9 @@ Default credentials (if not overridden): `admin` / `password123`
 ## Flow
 
 ```
-Login → Dashboard → Upload PDF → Extract text → AI parsing → Results (JSON/CSV export)
+Login → Dashboard → Upload PDF → Extract text (OCR if scanned) → AI parsing → Results (JSON/CSV export)
+                                                                    ↓
+                                                              History page
 ```
 
 ## Project structure
@@ -53,6 +56,7 @@ src/
   app/
     login/          # Login page
     dashboard/      # PDF upload
+    history/        # Past extractions list
     results/[id]/   # Extraction results
     api/
       auth/         # Login/logout
@@ -66,5 +70,6 @@ data/
 
 ## Notes
 
-- Scanned PDFs (image-only) are not supported in this MVP; OCR can be added later.
+- Text-based PDFs use direct text extraction; scanned PDFs automatically fall back to OCR (up to 15 pages).
+- OCR processing is slower than text extraction — expect longer wait times for scanned documents.
 - Uploaded files and results are stored locally in `data/`.

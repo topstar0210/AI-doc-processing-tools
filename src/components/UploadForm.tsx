@@ -57,7 +57,7 @@ export function UploadForm() {
         >
           <span className="mb-2 block text-4xl">📄</span>
           <span className="font-medium text-blue-600">Click to select a PDF</span>
-          <span className="mt-1 block text-zinc-500">Text-based PDFs only (max 10 MB)</span>
+          <span className="mt-1 block text-zinc-500">Text-based or scanned PDFs (max 10 MB)</span>
         </label>
         {file && (
           <p className="mt-4 text-sm font-medium text-zinc-800">
@@ -80,7 +80,7 @@ export function UploadForm() {
 
       {loading && (
         <p className="text-center text-sm text-zinc-500">
-          Extracting text and running AI analysis. This may take a moment.
+          Extracting text (OCR may take longer for scanned PDFs) and running AI analysis.
         </p>
       )}
     </form>

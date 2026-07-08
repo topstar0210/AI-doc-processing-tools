@@ -51,6 +51,11 @@ export function ResultsView({ result }: { result: ExtractedDocument }) {
           <h1 className="text-2xl font-semibold text-zinc-900">Extraction Results</h1>
           <p className="mt-1 text-sm text-zinc-500">
             {result.filename} · {new Date(result.createdAt).toLocaleString()}
+            {result.extractionMethod === "ocr" && (
+              <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                OCR
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -66,6 +71,12 @@ export function ResultsView({ result }: { result: ExtractedDocument }) {
           >
             Download CSV
           </button>
+          <Link
+            href="/history"
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          >
+            History
+          </Link>
           <Link
             href="/dashboard"
             className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700"
