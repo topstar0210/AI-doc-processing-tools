@@ -1,75 +1,166 @@
 # AI Document Processing
 
-Upload text-based PDFs, extract content, and parse structured fields with OpenAI.
+Enterprise-oriented document intelligence platform: upload PDFs, OCR when needed, vector-index content, chat with citations, and export structured JSON for downstream systems.
 
-## Features
+Built for legal and finance teams handling sensitive documents.
 
-- Static login (hardcoded credentials)
-- PDF upload (text-based or scanned, up to 10 MB)
-- Text extraction via `pdf-parse`, with OCR fallback via Tesseract.js
-- AI field extraction via OpenAI (`gpt-4o-mini`)
-- Results page with JSON and CSV export
-- Upload history page with past extractions
+## Milestone 1: Chat with Documents
 
-## Setup
+The core loop is live:
 
-1. Install dependencies:
+1. Upload one or many PDFs
+2. OCR runs automatically on scanned pages
+3. Embeddings are stored in **Qdrant** for fast retrieval
+4. Chat UI answers questions with **page-level citations** linking back to source text
+5. JSON export endpoint returns the full extracted dataset
+
+## Quick start (local)
+
+### 1. Start Qdrant
 
 ```bash
-npm install
+docker compose up qdrant -d
 ```
 
-2. Copy environment variables:
+### 2. Configure environment
 
 ```bash
 cp .env.example .env.local
 ```
 
-3. Edit `.env.local`:
+Set `OPENAI_API_KEY` and other values in `.env.local`.
 
-- `AUTH_USERNAME` / `AUTH_PASSWORD` — login credentials
-- `SESSION_SECRET` — random string for session signing
-- `OPENAI_API_KEY` — your OpenAI API key
-
-4. Start the dev server:
+### 3. Install and run
 
 ```bash
+npm install
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) — default login: `admin` / `password123`
 
-Default credentials (if not overridden): `admin` / `password123`
+## One-command Docker deploy
 
-## Flow
+```bash
+cp .env.example .env
+# edit .env with real secrets
+docker compose up --build
+```
+
+App: [http://localhost:3000](http://localhost:3000)  
+Qdrant: [http://localhost:6333](http://localhost:6333)
+
+## Architecture
 
 ```
-Login → Dashboard → Upload PDF → Extract text (OCR if scanned) → AI parsing → Results (JSON/CSV export)
-                                                                    ↓
-                                                              History page
+Upload PDF(s)
+    ↓
+OCR (Tesseract.js) when text layer is missing
+    ↓
+Page-aware text extraction + structured field parsing (OpenAI)
+    ↓
+Chunking + embeddings (OpenAI text-embedding-3-small)
+    ↓
+Qdrant vector store
+    ↓
+Chat query → vector search → streamed LLM answer with citations
+    ↓
+JSON export API for downstream consumers
 ```
+
+## API endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/documents` | `POST` | Upload one or many PDFs (multipart `files`) |
+| `/api/documents` | `GET` | List indexed documents |
+| `/api/chat` | `POST` | Stream chat answers with citations (SSE) |
+| `/api/export/[id]` | `GET` | Full document JSON export |
+| `/api/process` | `POST` | Single-file upload (legacy) |
+| `/api/history` | `GET` | Upload history |
+
+### Chat request
+
+```json
+{
+  "message": "What is the total amount due?",
+  "documentIds": ["uuid-1", "uuid-2"],
+  "history": []
+}
+```
+
+Response: Server-Sent Events stream with `citations`, `token`, and `done` events.
+
+### Export response schema
+
+```json
+{
+  "id": "uuid",
+  "filename": "contract.pdf",
+  "createdAt": "2026-07-08T12:00:00.000Z",
+  "extractionMethod": "ocr",
+  "pageCount": 42,
+  "pages": [{ "pageNumber": 1, "text": "..." }],
+  "structuredData": { "document_type": "contract", "..." : "..." },
+  "indexedAt": "2026-07-08T12:00:05.000Z"
+}
+```
+
+> Final contract schema can be swapped in post-award without changing the ingestion pipeline.
+
+## Performance notes
+
+| Acceptance target | Approach |
+|-------------------|----------|
+| Chat ≤ 2s on 100-page bundles | Indexing happens at upload; chat only embeds the query + searches Qdrant + streams LLM |
+| OCR ≥ 95% accuracy | Tesseract.js at 2× render scale; upgrade path to PaddleOCR/Azure DI for production hardening |
+| Enterprise licensing | MIT-friendly stack: Next.js, Qdrant (Apache 2.0), Tesseract (Apache 2.0), OpenAI API (commercial) |
+
+## Security and logging
+
+- Session-based auth with signed HTTP-only cookies
+- Structured JSON audit logs for uploads, chat queries, and exports
+- Local file storage under `data/` (swap for encrypted object storage in production)
+- Secrets via environment variables only
+- No document content logged — only metadata (IDs, filenames, page counts, durations)
 
 ## Project structure
 
 ```
 src/
   app/
-    login/          # Login page
-    dashboard/      # PDF upload
-    history/        # Past extractions list
-    results/[id]/   # Extraction results
+    chat/             # Chat with documents UI
+    dashboard/        # Multi-PDF upload
+    history/          # Past extractions
+    results/[id]/     # Per-document results + page anchors
     api/
-      auth/         # Login/logout
-      process/      # PDF upload + extraction
-  components/       # UI components
-  lib/              # Auth, PDF, OpenAI, storage
-data/
-  uploads/          # Stored PDFs (gitignored)
-  results/          # Extraction JSON (gitignored)
+      documents/      # Batch upload + indexing
+      chat/           # Streaming RAG chat
+      export/[id]/    # JSON export
+  lib/
+    pipeline.ts       # OCR → extract → embed → store
+    vector.ts         # Qdrant operations
+    rag.ts            # Retrieval + streaming answers
+    logger.ts         # Audit logging
+docker-compose.yml    # App + Qdrant
 ```
 
-## Notes
+## Roadmap (post–Milestone 1)
 
-- Text-based PDFs use direct text extraction; scanned PDFs automatically fall back to OCR (up to 15 pages).
-- OCR processing is slower than text extraction — expect longer wait times for scanned documents.
-- Uploaded files and results are stored locally in `data/`.
+- [ ] Per-document-type extraction schemas (invoices, contracts, statements)
+- [ ] Async job queue for large bundles
+- [ ] SSO / RBAC for enterprise tenants
+- [ ] Azure Document Intelligence OCR option
+- [ ] Contract-defined JSON schema plug-in
+
+## Development
+
+```bash
+npm run dev      # Next.js with webpack
+npm run build    # Production build
+npm run lint     # ESLint
+```
+
+## License stack
+
+All core dependencies use enterprise-friendly licenses. Verify OpenAI API terms for your deployment region and data residency requirements.

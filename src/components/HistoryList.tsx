@@ -44,6 +44,7 @@ export function HistoryList({ results }: { results: HistorySummary[] }) {
                 <p className="truncate font-medium text-zinc-900">{result.filename}</p>
                 <p className="mt-1 text-sm text-zinc-500">
                   {new Date(result.createdAt).toLocaleString()}
+                  {result.pageCount ? ` · ${result.pageCount} pages` : ""}
                   {result.documentType ? ` · ${result.documentType}` : ""}
                 </p>
               </div>

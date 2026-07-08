@@ -3,16 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function UploadForm() {
+export function MultiUploadForm() {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function handleFileChange(selected: FileList | null) {
+    if (!selected) return;
+    setFiles(Array.from(selected));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) {
-      setError("Please select a PDF file");
+    if (files.length === 0) {
+      setError("Please select at least one PDF");
       return;
     }
 
@@ -21,9 +26,9 @@ export function UploadForm() {
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      files.forEach((file) => formData.append("files", file));
 
-      const res = await fetch("/api/process", {
+      const res = await fetch("/api/documents", {
         method: "POST",
         body: formData,
       });
@@ -33,7 +38,13 @@ export function UploadForm() {
         throw new Error(data.error ?? "Upload failed");
       }
 
-      router.push(`/results/${data.id}`);
+      if (data.documents?.length === 1) {
+        router.push(`/results/${data.documents[0].id}`);
+        return;
+      }
+
+      router.push("/chat");
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -48,7 +59,8 @@ export function UploadForm() {
           id="pdf-upload"
           type="file"
           accept="application/pdf,.pdf"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          multiple
+          onChange={(e) => handleFileChange(e.target.files)}
           className="hidden"
         />
         <label
@@ -56,13 +68,19 @@ export function UploadForm() {
           className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-900"
         >
           <span className="mb-2 block text-4xl">📄</span>
-          <span className="font-medium text-blue-600">Click to select a PDF</span>
-          <span className="mt-1 block text-zinc-500">Text-based or scanned PDFs (max 10 MB)</span>
+          <span className="font-medium text-blue-600">Drop one or many PDFs here</span>
+          <span className="mt-1 block text-zinc-500">
+            Text-based or scanned PDFs, up to 20 files / 10 MB each
+          </span>
         </label>
-        {file && (
-          <p className="mt-4 text-sm font-medium text-zinc-800">
-            Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
-          </p>
+        {files.length > 0 && (
+          <ul className="mt-4 space-y-1 text-left text-sm text-zinc-800">
+            {files.map((file) => (
+              <li key={file.name}>
+                {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
@@ -72,15 +90,15 @@ export function UploadForm() {
 
       <button
         type="submit"
-        disabled={!file || loading}
+        disabled={files.length === 0 || loading}
         className="w-full rounded-lg bg-blue-600 px-4 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {loading ? "Processing document..." : "Upload & Extract"}
+        {loading ? "Processing and indexing..." : "Upload & Index"}
       </button>
 
       {loading && (
         <p className="text-center text-sm text-zinc-500">
-          Extracting text (OCR may take longer for scanned PDFs) and running AI analysis.
+          Running OCR where needed, extracting fields, and building vector embeddings for chat.
         </p>
       )}
     </form>

@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+data
+.env*
+!.env.example
+README.md
+eng.traineddata
+*.md
+!README.md

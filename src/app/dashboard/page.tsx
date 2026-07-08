@@ -1,5 +1,5 @@
 import { AppHeader } from "@/components/AppHeader";
-import { UploadForm } from "@/components/UploadForm";
+import { MultiUploadForm } from "@/components/MultiUploadForm";
 
 export default function DashboardPage() {
   return (
@@ -8,15 +8,15 @@ export default function DashboardPage() {
 
       <main className="mx-auto max-w-3xl px-4 py-10">
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-zinc-900">Upload PDF</h2>
+          <h2 className="text-2xl font-semibold text-zinc-900">Upload PDFs</h2>
           <p className="mt-2 text-sm text-zinc-500">
-            Upload a PDF to extract content and parse structured fields with AI. Scanned
-            documents are supported via OCR.
+            Drop one or many PDFs. The pipeline runs OCR when needed, extracts structured fields,
+            and indexes content for chat.
           </p>
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <UploadForm />
+          <MultiUploadForm />
         </div>
       </main>
     </div>

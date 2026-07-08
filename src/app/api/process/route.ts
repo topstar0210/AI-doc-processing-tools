@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
-import { extractStructuredData } from "@/lib/openai";
-import { extractTextFromPdf } from "@/lib/pdf";
-import { getResult, savePdf, saveResult } from "@/lib/storage";
-import type { ExtractedDocument } from "@/lib/types";
+import { logger } from "@/lib/logger";
+import { processAndIndexDocument } from "@/lib/pipeline";
+import { getResult } from "@/lib/storage";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   if (!(await isAuthenticated())) {
@@ -31,24 +31,12 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { text: extractedText, method: extractionMethod } = await extractTextFromPdf(buffer);
-    const structuredData = await extractStructuredData(extractedText);
-    const id = await savePdf(buffer, file.name);
-
-    const result: ExtractedDocument = {
-      id,
-      filename: file.name,
-      extractedText,
-      structuredData,
-      createdAt: new Date().toISOString(),
-      extractionMethod,
-    };
-
-    await saveResult(result);
+    const result = await processAndIndexDocument(buffer, file.name);
 
     return NextResponse.json({ id: result.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Processing failed";
+    logger.error("process.failed", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

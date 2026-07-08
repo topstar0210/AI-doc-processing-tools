@@ -51,6 +51,7 @@ export function ResultsView({ result }: { result: ExtractedDocument }) {
           <h1 className="text-2xl font-semibold text-zinc-900">Extraction Results</h1>
           <p className="mt-1 text-sm text-zinc-500">
             {result.filename} · {new Date(result.createdAt).toLocaleString()}
+            {result.pageCount ? ` · ${result.pageCount} pages` : ""}
             {result.extractionMethod === "ocr" && (
               <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
                 OCR
@@ -71,11 +72,17 @@ export function ResultsView({ result }: { result: ExtractedDocument }) {
           >
             Download CSV
           </button>
-          <Link
-            href="/history"
+          <a
+            href={`/api/export/${result.id}`}
             className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
           >
-            History
+            Export API JSON
+          </a>
+          <Link
+            href="/chat"
+            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+          >
+            Chat
           </Link>
           <Link
             href="/dashboard"
@@ -97,9 +104,24 @@ export function ResultsView({ result }: { result: ExtractedDocument }) {
 
       <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900">Extracted Text</h2>
-        <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 text-sm text-zinc-700">
-          {result.extractedText}
-        </pre>
+        {result.pages && result.pages.length > 0 ? (
+          <div className="max-h-96 space-y-4 overflow-auto">
+            {result.pages.map((page) => (
+              <div key={page.pageNumber} id={`page-${page.pageNumber}`} className="scroll-mt-24">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Page {page.pageNumber}
+                </p>
+                <pre className="whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 text-sm text-zinc-700">
+                  {page.text}
+                </pre>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg bg-zinc-50 p-4 text-sm text-zinc-700">
+            {result.extractedText}
+          </pre>
+        )}
       </section>
     </div>
   );

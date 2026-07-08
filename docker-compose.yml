@@ -1,0 +1,31 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-password123}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-secret}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: documents
+      OCR_MAX_PAGES: ${OCR_MAX_PAGES:-100}
+      NODE_ENV: production
+    volumes:
+      - app_data:/app/data
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:
+  app_data:
