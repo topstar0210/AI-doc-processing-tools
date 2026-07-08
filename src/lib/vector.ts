@@ -167,3 +167,23 @@ export async function reindexAllDocuments(
   }
   return total;
 }
+
+export async function deleteAllDocumentVectors(): Promise<void> {
+  const available = await isQdrantAvailable();
+  if (!available) {
+    logger.warn(
+      "vector.qdrant_unavailable",
+      "Qdrant not reachable — skipped vector cleanup during delete all"
+    );
+    return;
+  }
+
+  const client = getClient();
+  const collections = await client.getCollections();
+  const exists = collections.collections.some((collection) => collection.name === COLLECTION);
+
+  if (exists) {
+    await client.deleteCollection(COLLECTION);
+    logger.info("vector.collection_deleted", `Deleted Qdrant collection ${COLLECTION}`);
+  }
+}

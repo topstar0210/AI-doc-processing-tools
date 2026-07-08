@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ChatCitation, ChatMessage, HistorySummary } from "@/lib/types";
 
 function formatPageRange(pageStart: number, pageEnd: number) {
@@ -31,10 +32,12 @@ function CitationList({ citations }: { citations: ChatCitation[] }) {
 }
 
 export function ChatWindow({ documents }: { documents: HistorySummary[] }) {
+  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +55,35 @@ export function ChatWindow({ documents }: { documents: HistorySummary[] }) {
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((docId) => docId !== id) : [...current, id]
     );
+  }
+
+  async function handleDeleteAll() {
+    if (deleting || documents.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete all ${documents.length} document${documents.length === 1 ? "" : "s"}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/documents", { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to delete documents");
+      }
+
+      setSelectedIds([]);
+      setMessages([]);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete documents");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -141,8 +173,22 @@ export function ChatWindow({ documents }: { documents: HistorySummary[] }) {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <aside className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-zinc-900">Documents in chat</h3>
-        <p className="mt-1 text-xs text-zinc-500">Select which uploaded PDFs to query.</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900">Documents in chat</h3>
+            <p className="mt-1 text-xs text-zinc-500">Select which uploaded PDFs to query.</p>
+          </div>
+          {documents.length > 0 && (
+            <button
+              type="button"
+              onClick={handleDeleteAll}
+              disabled={deleting || loading}
+              className="shrink-0 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {deleting ? "Deleting..." : "Delete all"}
+            </button>
+          )}
+        </div>
         <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto">
           {documents.length === 0 ? (
             <p className="text-sm text-zinc-500">Upload PDFs first to start chatting.</p>

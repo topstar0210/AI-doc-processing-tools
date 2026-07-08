@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from "fs/promises";
+import { mkdir, readFile, readdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import type { ExportDocument, ExtractedDocument, HistorySummary } from "./types";
@@ -89,4 +89,23 @@ export async function listResults(): Promise<HistorySummary[]> {
     .filter((result): result is ExtractedDocument => result !== null)
     .map(toHistorySummary)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function deleteAllDocuments(): Promise<number> {
+  await ensureDirs();
+
+  const summaries = await listResults();
+  const count = summaries.length;
+
+  const [uploadFiles, resultFiles] = await Promise.all([
+    readdir(UPLOADS_DIR),
+    readdir(RESULTS_DIR),
+  ]);
+
+  await Promise.all([
+    ...uploadFiles.map((file) => unlink(path.join(UPLOADS_DIR, file))),
+    ...resultFiles.map((file) => unlink(path.join(RESULTS_DIR, file))),
+  ]);
+
+  return count;
 }

@@ -71,3 +71,25 @@ export async function GET() {
   const results = await listResults();
   return NextResponse.json({ documents: results });
 }
+
+export async function DELETE() {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { deleteAllDocuments } = await import("@/lib/storage");
+    const { deleteAllDocumentVectors } = await import("@/lib/vector");
+
+    const deleted = await deleteAllDocuments();
+    await deleteAllDocumentVectors();
+
+    logger.audit("documents.deleted_all", "All documents deleted", { count: deleted });
+
+    return NextResponse.json({ deleted });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Delete failed";
+    logger.error("documents.delete_all_failed", message);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
