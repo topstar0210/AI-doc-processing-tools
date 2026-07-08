@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifySessionToken } from "@/lib/auth";
 
+const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -9,15 +11,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get("session")?.value;
-  const authenticated = token ? await verifySessionToken(token) : false;
-
-  if (pathname === "/login") {
-    if (authenticated) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (PUBLIC_PATHS.includes(pathname)) {
+    if (pathname === "/login") {
+      const token = request.cookies.get("session")?.value;
+      const authenticated = token ? await verifySessionToken(token) : false;
+      if (authenticated) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
     }
     return NextResponse.next();
   }
+
+  const token = request.cookies.get("session")?.value;
+  const authenticated = token ? await verifySessionToken(token) : false;
 
   if (!authenticated) {
     if (pathname.startsWith("/api/")) {
